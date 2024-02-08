@@ -185,14 +185,12 @@ void PWM(float percent){
       //What would happen if I do onPercent = 0 and offPercent = 0;
       onPercent = 0;
       offPercent = 0;
-      onTime = 0;
-      offTime = 0;
     }else if(abs(percent) > 1 - PWM_DEADZONE){
       onPercent = 1 - PWM_DEADZONE;
       offPercent = PWM_DEADZONE;
     }
 
-    if(onPercent > .5){
+    if(onPercent >= .5){
       onTime = (onPercent / offPercent) * PWM_MILLIS;
       offTime = PWM_MILLIS;
     }else if(offPercent > .5){
@@ -208,6 +206,7 @@ void PWM(float percent){
     }
 
   }
+  
   if(!CWCountdown.isDone()){
     digitalWrite(CW, HIGH);
     digitalWrite(CCW, LOW);
