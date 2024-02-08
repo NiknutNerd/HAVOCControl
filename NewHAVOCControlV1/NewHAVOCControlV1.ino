@@ -3,12 +3,12 @@
 
 #define CW 7
 #define CCW 9
-#define PWMHZ = 10.0
 
 //Finding the milliseconds of the minimum cycle for PWM
+const float PWMHZ = 10.0;
 const float PWM_CYCLE = 1.0 / PWMHZ;
 const float PWM_MILLIS = 1000.0 * PWM_CYCLE;
-const float PWM_DEADZONE = 
+const float PWM_DEADZONE = 1.0 / PWMHZ;
 
 Adafruit_BNO055 bno = Adafruit_BNO055(55);
 
@@ -54,7 +54,7 @@ class Timer{
     long getTime(){
       return (long)millis() - startTime;
     }
-}
+};
 
 class CountdownTimer: public Timer{
   private:
@@ -91,7 +91,7 @@ class CountdownTimer: public Timer{
       }
       return timeLeft;
     }
-}
+};
 
 Timer oPIDTimer;
 Timer vPIDTimer;
@@ -102,7 +102,7 @@ CountdownTimer PWMCountdown;
 
 float oPID(float target){
   imuStuff();
-  float current = orientation.x;
+  float current = orientation.x();
 
   //Some sort of normalization to find error
   oPIDError = target - current;
@@ -176,22 +176,39 @@ void PWM(float percent){
   if(PWMCountdown.isDone()){
     float onPercent = abs(percent);
     float offPercent = 1 - onPercent;
-    long onTime;
-    long offTime;
+    long onTime = 0;
+    long offTime = 0;
     //Set the smaller to PWM_MILLIS
     //Set the larger to PWM_MILLIS times the ratio between the larger / the smaller
-    if(abs(percent) == .5){
-      onTime = PWM_MILLIS;
-      offTime = PWM_MILLIS;
-    }else if(abs(percent) < ){
-
+    if(abs(percent) < PWM_DEADZONE){
+      #TODO
+      //What would happen if I do onPercent = 0 and offPercent = 0;
+      onPercent = 0;
+      offPercent = 0;
+      onTime = 0;
+      offTime = 0;
+    }else if(abs(percent) > 1 - PWM_DEADZONE){
+      onPercent = 1 - PWM_DEADZONE;
+      offPercent = PWM_DEADZONE;
     }
-    if(onPercent <= .5){
-      onTime = PWM_MILLIS
-      offTime = (offPercent / onPercent) * PWM_MILLIS
-    }else if(onPercent <=)
 
-  }else if(!CWCountdown.isDone()){
+    if(onPercent > .5){
+      onTime = (onPercent / offPercent) * PWM_MILLIS;
+      offTime = PWM_MILLIS;
+    }else if(offPercent > .5){
+      onTime = PWM_MILLIS;
+      offTime = (offPercent / onPercent) * PWM_MILLIS;
+    }
+    if(percent > 0){
+      CWCountdown.reset(onTime);
+      PWMCountdown.reset(onTime + offTime);
+    }else if(percent < 0){
+      CCWCountdown.reset(onTime);
+      PWMCountdown.reset(onTime + offTime);
+    }
+
+  }
+  if(!CWCountdown.isDone()){
     digitalWrite(CW, HIGH);
     digitalWrite(CCW, LOW);
   }else if(!CCWCountdown.isDone()){
