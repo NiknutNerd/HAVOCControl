@@ -41,11 +41,11 @@ float vd = 0.0;
 float vkd = 0.00;
 float vPIDOutput;
 
-class Timer{
+class Stopwatch{
   private:
     long startTime;
   public:
-    Timer(){
+    Stopwatch(){
       startTime = (long)millis();
     }
     void reset(){
@@ -56,49 +56,43 @@ class Timer{
     }
 };
 
-class CountdownTimer: public Timer{
+class Timer{
   private:
-    long startTime;
-    long initTime;
-    long targetTime;
+    Stopwatch internalStopwatch;
+    long delay;
   public:
-    CountdownTimer(){
-      startTime = (long)millis();
-      initTime = 0;
-      targetTime = (long)millis();
+    Timer(){
+      internalStopwatch = Stopwatch();
+      delay = 0;
     }
-    CountdownTimer(long time){
-      startTime = (long)millis();
-      initTime = time;
-      targetTime = startTime + time;
+    Timer(long time){
+      internalStopwatch = Stopwatch();
+      delay = time;
     }
     void reset(long newTime){
-      startTime = (long)millis();
-      initTime = newTime;
-      targetTime = startTime + newTime;
+      delay = newTime;
+      internalStopwatch.reset();
+    }
+    long getTime(){
+      return internalStopwatch.getTime();
     }
     bool isDone(){
-      if((targetTime - (long)millis()) <= 0){
-        return true;
-      }else{
-        return false;
-      }
+      return getTime() > delay;
     }
     long getTimeLeft(){
-      long timeLeft = targetTime - (long)millis();
-      if(timeLeft < 0){
-        timeLeft = -1;
+      if (isDone()){
+        return -1;
       }
-      return timeLeft;
+      return delay - internalStopwatch.getTime();
     }
 };
 
-Timer oPIDTimer;
-Timer vPIDTimer;
+Stopwatch oPIDTimer;
+Stopwatch vPIDTimer;
 
-CountdownTimer CWCountdown;
-CountdownTimer CCWCountdown;
-CountdownTimer PWMCountdown;
+Timer CWCountdown;
+Timer CCWCountdown;
+Timer PWMCountdown;
 
 float oPID(float target){
   imuStuff();
