@@ -3,6 +3,12 @@
 
 #define CW 7
 #define CCW 9
+#define PWMHZ = 10.0
+
+//Finding the milliseconds of the minimum cycle for PWM
+const float PWM_CYCLE = 1.0 / PWMHZ;
+const float PWM_MILLIS = 1000.0 * PWM_CYCLE;
+const float PWM_DEADZONE = 
 
 Adafruit_BNO055 bno = Adafruit_BNO055(55);
 
@@ -78,7 +84,7 @@ class CountdownTimer: public Timer{
         return false;
       }
     }
-    long getTime(){
+    long getTimeLeft(){
       long timeLeft = targetTime - (long)millis();
       if(timeLeft < 0){
         timeLeft = -1;
@@ -156,7 +162,34 @@ float vPID(float target){
 }
 
 void PWM(float percent){
+  /*
+    3 countdown timers
+    PWMCountdown: The period of the PWM cycle (time on + time off)
+    CWCountdown: The time that the CW solenoid should be open
+    CCWCountdown: The time that the CCW solenoid should be open
+
+    PWM_MILLIS: Time in milliseconds for minimum actuation of solenoids
+    percent = onPercent, if positive set CW, if negative set CCW
+    if abs(percent) > .5, PWM_MILLIS is off time
+    if abs(percent) <= .5, PWM_MILLIS is on time
+  */
   if(PWMCountdown.isDone()){
+    float onPercent = abs(percent);
+    float offPercent = 1 - onPercent;
+    long onTime;
+    long offTime;
+    //Set the smaller to PWM_MILLIS
+    //Set the larger to PWM_MILLIS times the ratio between the larger / the smaller
+    if(abs(percent) == .5){
+      onTime = PWM_MILLIS;
+      offTime = PWM_MILLIS;
+    }else if(abs(percent) < ){
+
+    }
+    if(onPercent <= .5){
+      onTime = PWM_MILLIS
+      offTime = (offPercent / onPercent) * PWM_MILLIS
+    }else if(onPercent <=)
 
   }else if(!CWCountdown.isDone()){
     digitalWrite(CW, HIGH);
