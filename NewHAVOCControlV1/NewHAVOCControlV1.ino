@@ -181,8 +181,6 @@ void PWM(float percent){
     //Set the smaller to PWM_MILLIS
     //Set the larger to PWM_MILLIS times the ratio between the larger / the smaller
     if(abs(percent) < PWM_DEADZONE){
-      #TODO
-      //What would happen if I do onPercent = 0 and offPercent = 0;
       onPercent = 0;
       offPercent = 0;
     }else if(abs(percent) > 1 - PWM_DEADZONE){
