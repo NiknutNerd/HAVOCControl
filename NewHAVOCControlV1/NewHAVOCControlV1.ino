@@ -220,9 +220,30 @@ void PWM(float percent){
 void setup() {
   // put your setup code here, to run once:
 
+  pinMode(CW, OUTPUT);
+  pinMode(CCW, OUTPUT);
+  Serial.begin(9600);
+  while(1){
+    if(bno.begin()){
+      break;
+    }
+  }
+
+  imuStuff();
+  gyro.toDegrees();
+
+  oPIDTimer.reset();
+  vPIDTimer.reset();
+  
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
+  Serial.print(gyro.x());
+  Serial.print(",");
+  Serial.print(gyro.y());
+  Serial.print(",");
+  Serial.println(gyro.z());
+  PWM(vPID(0));
 
 }
