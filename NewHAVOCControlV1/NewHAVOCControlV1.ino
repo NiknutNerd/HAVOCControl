@@ -5,7 +5,7 @@
 #define CCW 9
 
 //Finding the milliseconds of the minimum cycle for PWM
-const float PWMHZ = 10.0;
+const float PWMHZ = 20.0;
 const float PWM_CYCLE = 1.0 / PWMHZ;
 const float PWM_MILLIS = 1000.0 * PWM_CYCLE;
 const float PWM_DEADZONE = 1.0 / PWMHZ;
@@ -34,12 +34,15 @@ float oPIDOutput;
 float vPIDError;
 float vLastTarget = 0.0;
 float vp = 0.0;
-float vkp = 0.05;
+float vkp = 0.01;
 float vi = 0.0;
 float vki = 0.0;
 float vd = 0.0;
 float vkd = 0.00;
 float vPIDOutput;
+
+bool CWOn;
+bool CCWOn;
 
 class Timer{
   private:
@@ -95,6 +98,7 @@ class CountdownTimer: public Timer{
 
 Timer oPIDTimer;
 Timer vPIDTimer;
+Timer timer;
 
 CountdownTimer CWCountdown;
 CountdownTimer CCWCountdown;
@@ -136,7 +140,7 @@ float vPID(float target){
   imuStuff();
   float current = gyro.z();
   vPIDError = (target - current);
-  if(abs(vPIDError < 2)){
+  if(abs(vPIDError) < 2){
     return 0;
   }
 
@@ -208,12 +212,18 @@ void PWM(float percent){
   if(!CWCountdown.isDone()){
     digitalWrite(CW, HIGH);
     digitalWrite(CCW, LOW);
+    CWOn = true;
+    CCWOn = false;
   }else if(!CCWCountdown.isDone()){
     digitalWrite(CW, LOW);
     digitalWrite(CCW, HIGH);
+    CWOn = false;
+    CCWOn = true;
   }else{
     digitalWrite(CW, LOW);
     digitalWrite(CCW, LOW);
+    CWOn = false;
+    CCWOn = false;
   }
 }
 
@@ -222,7 +232,10 @@ void setup() {
 
   pinMode(CW, OUTPUT);
   pinMode(CCW, OUTPUT);
+  pinMode(22, OUTPUT);
+  pinMode(23, OUTPUT);
   Serial.begin(9600);
+  digitalWrite(23, HIGH);
   while(1){
     if(bno.begin()){
       break;
@@ -234,16 +247,46 @@ void setup() {
 
   oPIDTimer.reset();
   vPIDTimer.reset();
+  timer.reset();
   
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-  Serial.print(gyro.x());
-  Serial.print(",");
-  Serial.print(gyro.y());
-  Serial.print(",");
-  Serial.println(gyro.z());
-  PWM(vPID(0));
-
+  if(timer.getTime() > 100){
+    Serial.print(gyro.x());
+    Serial.print(",");
+    Serial.print(gyro.y());
+    Serial.print(",");
+    Serial.println(gyro.z());
+    Serial.print("CW On: ");
+    Serial.print(CWOn);
+    Serial.print(", CCW On: ");
+    Serial.println(CCWOn);
+    Serial.print("vPID Output: ");
+    Serial.println(vPID(0));
+    timer.reset();
+  }
+  
+  PWM(vPID(-15));
+  //digitalWrite(22, HIGH);
+  
+  /*
+  if(timer.getTime() < 2000){
+    PWM(.6);
+  }else if(timer.getTime() < 4000){
+    PWM(.5);
+  }else if(timer.getTime() < 6000){
+    PWM(.25);
+  }else if(timer.getTime() < 8000){
+    PWM(-.25);
+  }else if(timer.getTime() < 10000){
+    PWM(-.5);
+  }else if(timer.getTime() < 12000){
+    PWM(-.6);
+  }else{
+    PWM(0);
+  }
+  */
+  
 }
