@@ -109,7 +109,8 @@ float oPID(float target){
   float current = orientation.x();
 
   //Some sort of normalization to find error
-  oPIDError = target - current;
+  //oPIDError = target - current
+  oPIDError = int(target - (360 - current) + 540) % 360 - 180;
 
   //If in dead zone do nothing
   if(abs(oPIDError) < 5){
