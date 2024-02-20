@@ -5,7 +5,7 @@
 #define CCW 9
 
 //Finding the milliseconds of the minimum cycle for PWM
-const float PWMHZ = 20.0;
+const float PWMHZ = 10.0;
 const float PWM_CYCLE = 1.0 / PWMHZ;
 const float PWM_MILLIS = 1000.0 * PWM_CYCLE;
 const float PWM_DEADZONE = 1.0 / PWMHZ;
@@ -43,6 +43,7 @@ float vPIDOutput;
 
 bool CWOn;
 bool CCWOn;
+float PWMInput = 0.0;
 
 class Timer{
   private:
@@ -59,36 +60,32 @@ class Timer{
     }
 };
 
-class CountdownTimer: public Timer{
+class CountdownTimer{
   private:
-    long startTime;
-    long initTime;
-    long targetTime;
+    long length;
+    Timer internal;
   public:
     CountdownTimer(){
-      startTime = (long)millis();
-      initTime = 0;
-      targetTime = (long)millis();
+      internal = Timer();
+      length = 0;
     }
     CountdownTimer(long time){
-      startTime = (long)millis();
-      initTime = time;
-      targetTime = startTime + time;
+      internal = Timer();
+      length = time;
     }
     void reset(long newTime){
-      startTime = (long)millis();
-      initTime = newTime;
-      targetTime = startTime + newTime;
+      length = newTime;
+      internal.reset();
+    }
+    void reset(){
+      //length does not change
+      internal.reset();
     }
     bool isDone(){
-      if((targetTime - (long)millis()) <= 0){
-        return true;
-      }else{
-        return false;
-      }
+      return internal.getTime() > length;
     }
     long getTimeLeft(){
-      long timeLeft = targetTime - (long)millis();
+      long timeLeft = length - internal.getTime();
       if(timeLeft < 0){
         timeLeft = -1;
       }
@@ -98,6 +95,7 @@ class CountdownTimer: public Timer{
 
 Timer oPIDTimer;
 Timer vPIDTimer;
+Timer telem;
 Timer timer;
 
 CountdownTimer CWCountdown;
@@ -141,7 +139,7 @@ float vPID(float target){
   imuStuff();
   float current = gyro.z();
   vPIDError = (target - current);
-  if(abs(vPIDError) < 2){
+  if(abs(vPIDError) < 5){
     return 0;
   }
 
@@ -179,6 +177,7 @@ void PWM(float percent){
     if abs(percent) <= .5, PWM_MILLIS is on time
   */
   if(PWMCountdown.isDone()){
+    PWMInput = percent;
     float onPercent = abs(percent);
     float offPercent = 1 - onPercent;
     long onTime = 0;
@@ -254,40 +253,38 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  if(timer.getTime() > 100){
-    Serial.print(gyro.x());
-    Serial.print(",");
-    Serial.print(gyro.y());
-    Serial.print(",");
+  if(telem.getTime() > 100){
+    imuStuff();
+    Serial.print("Gyro Z: ");
     Serial.println(gyro.z());
+    Serial.print("Orientation X: ");
+    Serial.println(orientation.x());
     Serial.print("CW On: ");
     Serial.print(CWOn);
     Serial.print(", CCW On: ");
     Serial.println(CCWOn);
+    Serial.print("PWM Input: ");
+    Serial.println(PWMInput);
     Serial.print("vPID Output: ");
     Serial.println(vPID(0));
-    timer.reset();
+    telem.reset();
   }
   
-  PWM(vPID(-15));
+  PWM(vPID(0));
+
   //digitalWrite(22, HIGH);
   
   /*
-  if(timer.getTime() < 2000){
-    PWM(.6);
-  }else if(timer.getTime() < 4000){
+  if(timer.getTime() < 1000){
     PWM(.5);
-  }else if(timer.getTime() < 6000){
+  }else if(timer.getTime() < 2000){
     PWM(.25);
-  }else if(timer.getTime() < 8000){
-    PWM(-.25);
-  }else if(timer.getTime() < 10000){
+  }else if(timer.getTime() < 3000){
     PWM(-.5);
-  }else if(timer.getTime() < 12000){
-    PWM(-.6);
+  }else if(timer.getTime() < 4000){
+    PWM(-.25);
   }else{
     PWM(0);
   }
   */
-  
 }
