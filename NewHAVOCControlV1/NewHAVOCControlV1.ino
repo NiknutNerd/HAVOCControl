@@ -1,11 +1,11 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
 
-#define CW 7
-#define CCW 9
+#define CW 15
+#define CCW 14
 
 //Finding the milliseconds of the minimum cycle for PWM
-const float PWMHZ = 20.0;
+const float PWMHZ = 10.0;
 const float PWM_CYCLE = 1.0 / PWMHZ;
 const float PWM_MILLIS = 1000.0 * PWM_CYCLE;
 const float PWM_DEADZONE = 1.0 / PWMHZ;
@@ -25,17 +25,17 @@ void imuStuff(){
 float oPIDError;
 float oLastTarget = 0.0;
 float op = 0.0;
-float okp = 0.4;
+float okp = 0.5;
 float oi = 0.0;
 float oki = 0.0;
 float od = 0.0;
-float okd = 0.0;
+float okd = 0.01;
 float oPIDOutput;
 
 float vPIDError;
 float vLastTarget = 0.0;
 float vp = 0.0;
-float vkp = 0.009;
+float vkp = 0.0085;
 float vi = 0.0;
 float vki = 0.0;
 float vd = 0.0;
@@ -133,14 +133,14 @@ float oPID(float target){
   oPIDOutput = (okp * op) + (oki * oi) + (okd * od);
   oLastTarget = target;
 
-  return oPIDOutput;
+  return (-1) * oPIDOutput;
 }
 
 float vPID(float target){
   imuStuff();
   float current = gyro.z();
   vPIDError = (target - current);
-  if(abs(vPIDError) < 5){
+  if(abs(vPIDError) < 3){
     return 0;
   }
 
@@ -189,12 +189,12 @@ void PWM(float percent){
     //If in deadzone, set time to PWM millis
     //Means it wont be tie up time
     if(onPercent < PWM_DEADZONE){
-      onTime = 0;
-      offTime = PWM_MILLIS
+      onTime = -1;
+      offTime = PWM_MILLIS;
     }else if(onPercent >= (1 - PWM_DEADZONE)){
       //If the onPercent is greater than the deadzone, have the thing be open for the min time then come back and check
       onTime = PWM_MILLIS;
-      offTime = 0;
+      offTime = -1;
     }else if(onPercent >= offPercent){
       onTime = (onPercent / offPercent) * PWM_MILLIS;
       offTime = PWM_MILLIS;
@@ -204,15 +204,16 @@ void PWM(float percent){
     }
 
     if(percent > 0){
+      PWMCountdown.reset(onTime + offTime);
       CWCountdown.reset(onTime);
-      PWMCountdown.reset(onTime + offTime);
+      
     }else if(percent < 0){
+      PWMCountdown.reset(onTime + offTime);
       CCWCountdown.reset(onTime);
-      PWMCountdown.reset(onTime + offTime);
     }else{
-      CWCountdown.reset(0);
-      CCWCountdown.reset(0);
       PWMCountdown.reset(onTime + offTime);
+      CWCountdown.reset(-1);
+      CCWCountdown.reset(-1);
     }
 
   }
@@ -262,26 +263,42 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  if(telem.getTime() > 25){
+  if(telem.getTime() > 50){
     imuStuff();
     Serial.print("Orientation X: ");
-    Serial.println(orientation.x());
-    Serial.print("Gyro Z: ");
-    Serial.println(gyro.z());
-    Serial.print("CW On: ");
+    Serial.print(orientation.x());
+    Serial.print(", Gyro Z: ");
+    Serial.print(gyro.z());
+    Serial.print(", CW On: ");
     Serial.print(CWOn);
     Serial.print(", CCW On: ");
-    Serial.println(CCWOn);
-    Serial.print("PWM Input: ");
-    Serial.println(PWMInput);
-    Serial.print("oPID Output: ");
-    Serial.println(oPID(0));
-    Serial.print("vPID Output: ");
+    Serial.print(CCWOn);
+    Serial.print(", PWM Input: ");
+    Serial.print(PWMInput);
+    Serial.print(", oPID Output: ");
+    Serial.print(oPID(0));
+    Serial.print(", oPID Error: ");
+    Serial.print(oPIDError);
+    Serial.print(", vPID Output: ");
     Serial.println(vPID(oPID(0)));
     telem.reset();
   }
   
-  PWM(vPID(0));
+  //PWM(vPID(oPID(0)));
+  //PWM(0);
+  
+
+  if(timer.getTime() < 10000){
+    PWM(vPID(oPID(0)));
+  }else if(timer.getTime() < 20000){
+    PWM(vPID(oPID(90)));
+  }else if(timer.getTime() < 30000){
+    PWM(vPID(oPID(180)));
+  }else if(timer.getTime() < 40000){
+    PWM(vPID(oPID(270)));
+  }else{
+    timer.reset();
+  }
 
   //digitalWrite(22, HIGH);
   
