@@ -5,10 +5,10 @@
 #define CCW 14
 
 //Finding the milliseconds of the minimum cycle for PWM
-const float PWMHZ = 10.0;
+const float PWMHZ = 25.0;
 const float PWM_CYCLE = 1.0 / PWMHZ;
 const float PWM_MILLIS = 1000.0 * PWM_CYCLE;
-const float PWM_DEADZONE = 1.0 / PWMHZ;
+const float PWM_DEADZONE = 2.0 / PWMHZ;
 //const float PWM_DEADZONE = 0.075;
 
 Adafruit_BNO055 bno = Adafruit_BNO055(55);
@@ -25,11 +25,11 @@ void imuStuff(){
 float oPIDError;
 float oLastTarget = 0.0;
 float op = 0.0;
-float okp = 0.5;
+float okp = 0.25;
 float oi = 0.0;
 float oki = 0.0;
 float od = 0.0;
-float okd = 0.01;
+float okd = 0.0;
 float oPIDOutput;
 
 float vPIDError;
@@ -98,6 +98,8 @@ Timer oPIDTimer;
 Timer vPIDTimer;
 Timer telem;
 Timer timer;
+Timer runtime;
+Timer blinker;
 
 CountdownTimer CWCountdown;
 CountdownTimer CCWCountdown;
@@ -236,15 +238,48 @@ void PWM(float percent){
   }
 }
 
+void blink(long time){
+  if(blinker.getTime() < time){
+    digitalWrite(33, HIGH)
+  }else if(blinker.getTime() < 2*time){
+    digitalWrite(33, LOW);
+  }else{
+    blinker.reset();
+  }
+}
+
+void header(){
+  Serial1.print("Time, OrientationX, GyroZ, oPID Target, oPID Error, oPID Output, vPID Target, vPID Error, vPID Output, PWM Input, CW On, CCW On");
+}
+
+void print(){
+  if(telem.getTime() > 50){
+    imuStuff();
+    Serial1.print(runtime.getTime());
+    Serial1.print(orientation.x());
+    Serial1.print(gyro.z());
+    Serial1.print(oLastTarget)
+    Serial1.print(oPIDError);
+    Serial1.print(oPIDOutput);
+    Serial1.print(vLastTarget);
+    Serial1.print(vPIDError);
+    Serial1.print(vPIDOutput);
+    Serial1.println(PWMInput);
+    Serial1.print(CWOn);
+    Serial1.print(CCWOn);
+    telem.reset();
+  }
+}
+
 void setup() {
   // put your setup code here, to run once:
 
   pinMode(CW, OUTPUT);
   pinMode(CCW, OUTPUT);
-  pinMode(22, OUTPUT);
-  pinMode(23, OUTPUT);
-  Serial.begin(9600);
-  digitalWrite(23, HIGH);
+  pinMode(29, OUTPUT);
+  pinMode(33, OUTPUT);
+  Serial1.begin(9600);
+  digitalWrite(29, HIGH);
   while(1){
     if(bno.begin()){
       break;
@@ -254,40 +289,55 @@ void setup() {
   imuStuff();
   gyro.toDegrees();
 
+  header();
+
   oPIDTimer.reset();
   vPIDTimer.reset();
   timer.reset();
   telem.reset();
+  blinker.reset();
   
 }
 
+float maxVel = 0;
+
 void loop() {
   // put your main code here, to run repeatedly:
-  if(telem.getTime() > 50){
-    imuStuff();
-    Serial.print("Orientation X: ");
-    Serial.print(orientation.x());
-    Serial.print(", Gyro Z: ");
-    Serial.print(gyro.z());
-    Serial.print(", CW On: ");
-    Serial.print(CWOn);
-    Serial.print(", CCW On: ");
-    Serial.print(CCWOn);
-    Serial.print(", PWM Input: ");
-    Serial.print(PWMInput);
-    Serial.print(", oPID Output: ");
-    Serial.print(oPID(0));
-    Serial.print(", oPID Error: ");
-    Serial.print(oPIDError);
-    Serial.print(", vPID Output: ");
-    Serial.println(vPID(oPID(0)));
-    telem.reset();
-  }
-  
+  print();
+
   //PWM(vPID(oPID(0)));
   //PWM(0);
-  
 
+  if(timer.getTime() < 7500){
+    PWM(vPID(0));
+    blink(1000);
+  }else if(timer.getTime() < 15000){
+    PWM(vPID(15));
+    blink(500);
+  }else if(timer.getTime() < 22500){
+    PWM(vPID(30));
+    blink(250);
+  }else if(timer.getTime() < 30000){
+    PWM(vPID(15));
+    blink(500);
+  }else if(timer.getTime() < 37500){
+    PWM(vPID(0));
+    blink(1000);
+  }else if(timer.getTime() < 45000){
+    PWM(vPID(-15));
+    blink(500);
+  }else if(timer.getTime() < 52500){
+    PWM(vPID(-30));
+    blink(250);
+  }else if(timer.getTime() < 60000){
+    PWM(vPID(-15));
+    blink(500);
+  }else{
+    PWM(vPID(0));
+    blink(1000);
+  }
+
+  /*
   if(timer.getTime() < 10000){
     PWM(vPID(oPID(0)));
   }else if(timer.getTime() < 20000){
@@ -298,21 +348,6 @@ void loop() {
     PWM(vPID(oPID(270)));
   }else{
     timer.reset();
-  }
-
-  //digitalWrite(22, HIGH);
-  
-  /*
-  if(timer.getTime() < 1000){
-    PWM(.5);
-  }else if(timer.getTime() < 2000){
-    PWM(.25);
-  }else if(timer.getTime() < 3000){
-    PWM(-.5);
-  }else if(timer.getTime() < 4000){
-    PWM(-.25);
-  }else{
-    PWM(0);
   }
   */
 }
