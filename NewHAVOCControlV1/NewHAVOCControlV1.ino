@@ -8,7 +8,7 @@
 const float PWMHZ = 25.0;
 const float PWM_CYCLE = 1.0 / PWMHZ;
 const float PWM_MILLIS = 1000.0 * PWM_CYCLE;
-const float PWM_DEADZONE = 2.0 / PWMHZ;
+const float PWM_DEADZONE = 1.5 / PWMHZ;
 //const float PWM_DEADZONE = 0.075;
 
 Adafruit_BNO055 bno = Adafruit_BNO055(55);
@@ -35,7 +35,7 @@ float oPIDOutput;
 float vPIDError;
 float vLastTarget = 0.0;
 float vp = 0.0;
-float vkp = 0.0085;
+float vkp = 0.014;
 float vi = 0.0;
 float vki = 0.0;
 float vd = 0.0;
@@ -99,7 +99,6 @@ Timer vPIDTimer;
 Timer telem;
 Timer timer;
 Timer runtime;
-Timer blinker;
 
 CountdownTimer CWCountdown;
 CountdownTimer CCWCountdown;
@@ -238,35 +237,36 @@ void PWM(float percent){
   }
 }
 
-void blink(long time){
-  if(blinker.getTime() < time){
-    digitalWrite(33, HIGH)
-  }else if(blinker.getTime() < 2*time){
-    digitalWrite(33, LOW);
-  }else{
-    blinker.reset();
-  }
-}
-
 void header(){
-  Serial1.print("Time, OrientationX, GyroZ, oPID Target, oPID Error, oPID Output, vPID Target, vPID Error, vPID Output, PWM Input, CW On, CCW On");
+  Serial1.println("Time, Orientation X, Gyro Z, oPID Target, oPID Error, oPID Output, vPID Target, vPID Error, vPID Output, PWM Input, CW On, CCW On");
 }
 
 void print(){
   if(telem.getTime() > 50){
     imuStuff();
     Serial1.print(runtime.getTime());
+    Serial1.print(",");
     Serial1.print(orientation.x());
+    Serial1.print(",");
     Serial1.print(gyro.z());
-    Serial1.print(oLastTarget)
+    Serial1.print(",");
+    Serial1.print(oLastTarget);
+    Serial1.print(",");
     Serial1.print(oPIDError);
+    Serial1.print(",");
     Serial1.print(oPIDOutput);
+    Serial1.print(",");
     Serial1.print(vLastTarget);
+    Serial1.print(",");
     Serial1.print(vPIDError);
+    Serial1.print(",");
     Serial1.print(vPIDOutput);
-    Serial1.println(PWMInput);
+    Serial1.print(",");
+    Serial1.print(PWMInput);
+    Serial1.print(",");
     Serial1.print(CWOn);
-    Serial1.print(CCWOn);
+    Serial1.print(",");
+    Serial1.println(CCWOn);
     telem.reset();
   }
 }
@@ -276,10 +276,10 @@ void setup() {
 
   pinMode(CW, OUTPUT);
   pinMode(CCW, OUTPUT);
-  pinMode(29, OUTPUT);
-  pinMode(33, OUTPUT);
-  Serial1.begin(9600);
-  digitalWrite(29, HIGH);
+  pinMode(22, OUTPUT);
+  pinMode(23, OUTPUT);
+  Serial1.begin(115200);
+  digitalWrite(22, HIGH);
   while(1){
     if(bno.begin()){
       break;
@@ -295,7 +295,7 @@ void setup() {
   vPIDTimer.reset();
   timer.reset();
   telem.reset();
-  blinker.reset();
+  runtime.reset();
   
 }
 
@@ -307,34 +307,17 @@ void loop() {
 
   //PWM(vPID(oPID(0)));
   //PWM(0);
-
-  if(timer.getTime() < 7500){
+  
+  if(timer.getTime() < 10000){
     PWM(vPID(0));
-    blink(1000);
-  }else if(timer.getTime() < 15000){
-    PWM(vPID(15));
-    blink(500);
-  }else if(timer.getTime() < 22500){
-    PWM(vPID(30));
-    blink(250);
+  }else if(timer.getTime() < 20000){
+    PWM(vPID(50));
   }else if(timer.getTime() < 30000){
-    PWM(vPID(15));
-    blink(500);
-  }else if(timer.getTime() < 37500){
     PWM(vPID(0));
-    blink(1000);
-  }else if(timer.getTime() < 45000){
-    PWM(vPID(-15));
-    blink(500);
-  }else if(timer.getTime() < 52500){
-    PWM(vPID(-30));
-    blink(250);
-  }else if(timer.getTime() < 60000){
-    PWM(vPID(-15));
-    blink(500);
+  }else if(timer.getTime() < 40000){
+    PWM(vPID(-50));
   }else{
     PWM(vPID(0));
-    blink(1000);
   }
 
   /*
